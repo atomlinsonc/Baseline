@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment variables (NEVER commit)
+.env
+backend/.env
+*.env.local
+
+# Build output
+frontend/dist/
+
+# Database (contains real data)
+backend/data/
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/settings.json
+*.swp
+
+# Vite
+.vite/

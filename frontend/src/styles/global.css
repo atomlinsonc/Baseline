@@ -1,0 +1,121 @@
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  /* Palette */
+  --color-bg:          #faf9f6;
+  --color-bg-card:     #ffffff;
+  --color-bg-subtle:   #f2f0eb;
+  --color-border:      #e0ddd6;
+  --color-border-mid:  #c8c4bc;
+
+  --color-ink:         #111110;
+  --color-ink-2:       #3d3c38;
+  --color-ink-3:       #6b6960;
+  --color-ink-4:       #9e9b94;
+
+  --color-accent:      #1a1a1a;
+  --color-accent-line: #111110;
+
+  /* Pro/Con colors */
+  --color-pro:         #1e5c8a;
+  --color-pro-bg:      #eaf3fb;
+  --color-pro-border:  #b8d4ec;
+  --color-con:         #8a2020;
+  --color-con-bg:      #fbeaea;
+  --color-con-border:  #ecb8b8;
+
+  /* Typography */
+  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'IBM Plex Serif', Georgia, serif;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Layout */
+  --max-w-content: 860px;
+  --max-w-wide:    1100px;
+
+  /* Radius */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input, select { font-family: inherit; }
+
+/* ── Typography ────────────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.serif { font-family: var(--font-serif); }
+
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: var(--max-w-content);
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+}
+
+.container--wide {
+  max-width: var(--max-w-wide);
+}
+
+/* ── Utility ───────────────────────────────────────────────────────────────── */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.text-muted { color: var(--color-ink-3); }
+.text-small { font-size: 0.8125rem; }
+.text-xs    { font-size: 0.75rem; }
+
+/* ── Focus styles ──────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-border-mid); border-radius: 3px; }

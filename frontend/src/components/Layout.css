@@ -1,0 +1,109 @@
+/* ── Site wrapper ──────────────────────────────────────────────────────────── */
+.site-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.site-main {
+  flex: 1;
+  padding-top: var(--space-10);
+  padding-bottom: var(--space-16);
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.site-header {
+  background: var(--color-ink);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  gap: var(--space-8);
+}
+
+.site-header__logo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.site-header__wordmark {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.site-header__tagline {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.01em;
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .site-header__tagline { display: inline; }
+}
+
+.site-header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.site-header__nav-link {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.6);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.site-header__nav-link:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+}
+
+.site-header__nav-link.is-active {
+  color: #fff;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────────── */
+.site-footer {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  padding: var(--space-10) 0;
+  margin-top: auto;
+}
+
+.site-footer__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.site-footer__statement {
+  font-size: 0.8125rem;
+  color: var(--color-ink-3);
+  line-height: 1.6;
+  max-width: 600px;
+}
+
+.site-footer__note {
+  font-size: 0.75rem;
+}
