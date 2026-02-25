@@ -6,6 +6,7 @@
  */
 
 require('dotenv').config();
+require('openai/shims/node'); // Ensure Node.js-native fetch/File shims for openai SDK
 
 const express = require('express');
 const cors = require('cors');

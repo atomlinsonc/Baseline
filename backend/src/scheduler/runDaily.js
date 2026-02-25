@@ -12,6 +12,7 @@
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '../../../.env') });
+require('openai/shims/node'); // Ensure Node.js-native fetch/File shims for openai SDK
 
 const { scrapeReddit } = require('../scrapers/redditScraper');
 const { scrapeGoogleTrends } = require('../scrapers/googleTrendsScraper');
