@@ -1,6 +1,10 @@
 # Render deployment config — https://render.com/docs/blueprint-spec
 # Deploy this entire file by connecting your GitHub repo to Render.
-# Creates: 1 Web Service (API) + 1 Cron Job (daily pipeline) + 1 Disk
+# Creates: 1 Web Service (API) + 1 Cron Job (daily pipeline)
+#
+# NOTE: Persistent disk must be added manually in the Render dashboard after
+# the first deploy (Disks > Add Disk, mount at /data, 1GB).
+# Until then, DB_PATH defaults to a local path inside the service container.
 
 services:
   # ── Backend API ─────────────────────────────────────────────────────────────
@@ -19,11 +23,11 @@ services:
       - key: PORT
         value: 3001
       - key: DB_PATH
-        value: /data/baseline.db        # Persistent disk mount path
+        value: /data/baseline.db
 
       # ── Set these in the Render dashboard (not here — keep secrets out of git)
       - key: OPENAI_API_KEY
-        sync: false                      # Render will prompt you to enter this
+        sync: false
       - key: REDDIT_CLIENT_ID
         sync: false
       - key: REDDIT_CLIENT_SECRET
@@ -35,29 +39,19 @@ services:
       - key: YOUTUBE_API_KEY
         sync: false
       - key: ADMIN_SECRET
-        sync: false                      # Used to protect the /api/admin/* routes
+        sync: false
       - key: ALLOWED_ORIGINS
-        sync: false                      # e.g. https://atomlinsonc.github.io
-
-    disk:
-      name: baseline-db
-      mountPath: /data
-      sizeGB: 1                         # Free tier includes 1GB disk
+        sync: false
 
   # ── Daily cron job ──────────────────────────────────────────────────────────
-  # Render Cron Jobs run on a schedule and are separate from the web service.
-  # This hits the admin API endpoint to trigger the daily pipeline.
-  # This is better than relying on node-cron inside the web service, because
-  # Render free tier spins down the web service after inactivity.
+  # Runs at 11:00 UTC (6:00 AM Eastern) every day
   - type: cron
     name: baseline-daily-pipeline
     runtime: node
     rootDir: backend
     buildCommand: npm install
-    # Runs at 11:00 UTC (6:00 AM Eastern) every day
     schedule: "0 11 * * *"
     startCommand: node src/scheduler/runDaily.js
-    plan: free
 
     envVars:
       - key: NODE_ENV
@@ -76,8 +70,3 @@ services:
         sync: false
       - key: YOUTUBE_API_KEY
         sync: false
-
-    disk:
-      name: baseline-db
-      mountPath: /data
-      sizeGB: 1
