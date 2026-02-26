@@ -63,9 +63,13 @@ async function runDailyPipeline(overrideDate = null) {
     logger.info('Phase 2: Selecting topic...');
     let selectedTopic;
 
-    if (overrideDate || (reddit.length === 0 && google.length === 0 && youtube.length === 0)) {
-      // Historical date OR all scrapers empty — use direct GPT-4o selection
-      if (!overrideDate) logger.warn('All scrapers returned empty results — falling back to direct GPT-4o topic selection');
+    // Only trust scraper signals if Reddit OR Google Trends returned results.
+    // A single YouTube RSS headline alone is too noisy to drive topic selection.
+    const hasQualitySignals = reddit.length > 0 || google.length > 0;
+
+    if (overrideDate || !hasQualitySignals) {
+      // Historical date OR no quality signals — use direct GPT-4o selection
+      if (!overrideDate) logger.warn('No quality scraper signals (Reddit/Google) — falling back to direct GPT-4o topic selection');
       selectedTopic = await selectTopicForDate(date);
     } else {
       selectedTopic = await selectTopic(reddit, google, youtube, date);
