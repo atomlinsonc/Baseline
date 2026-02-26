@@ -169,11 +169,9 @@ router.delete('/topics/:slug', requireAdmin, (req, res) => {
       return res.status(404).json({ error: `Topic not found: ${slug}` });
     }
 
-    // Cascade delete all related data
-    db.prepare(`DELETE FROM claims WHERE topic_id = ?`).run(topic.id);
-    db.prepare(`DELETE FROM arguments WHERE topic_id = ?`).run(topic.id);
-    db.prepare(`DELETE FROM polls WHERE topic_id = ?`).run(topic.id);
-    db.prepare(`DELETE FROM trend_signals WHERE topic_id = ?`).run(topic.id);
+    // Null out run_log references (no ON DELETE CASCADE), then delete topic
+    // (claims, arguments, polls, trend_signals all have ON DELETE CASCADE)
+    db.prepare(`UPDATE run_log SET topic_id = NULL WHERE topic_id = ?`).run(topic.id);
     db.prepare(`DELETE FROM topics WHERE id = ?`).run(topic.id);
 
     logger.info('Topic deleted via admin API', { slug, topicId: topic.id });
