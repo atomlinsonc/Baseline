@@ -243,6 +243,13 @@ Respond with a JSON object (no markdown, no explanation) in exactly this format:
   });
 
   const data = JSON.parse(response.choices[0].message.content);
+
+  // Guard: reject placeholder/fallback titles that indicate AI couldn't find a topic
+  const badTitlePatterns = [/no suitable/i, /not available/i, /no topic/i, /unable to/i, /cannot find/i];
+  if (!data.selected_title || badTitlePatterns.some(p => p.test(data.selected_title))) {
+    throw new Error(`GPT-4o could not find a suitable topic for ${date}: "${data.selected_title}"`);
+  }
+
   logger.info('Topic directly selected by AI', { date, title: data.selected_title, reasoning: data.selection_reasoning });
   return { ...data, candidates: [] };
 }

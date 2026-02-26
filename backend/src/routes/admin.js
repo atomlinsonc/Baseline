@@ -157,6 +157,33 @@ router.post('/backfill', requireAdmin, async (req, res) => {
   })().catch(err => logger.error('Backfill fatal error', { error: err.message }));
 });
 
+// DELETE /api/admin/topics/:slug — remove a bad/test topic from the DB
+router.delete('/topics/:slug', requireAdmin, (req, res) => {
+  try {
+    const { getDb } = require('../db/schema');
+    const db = getDb();
+    const { slug } = req.params;
+
+    const topic = db.prepare(`SELECT id FROM topics WHERE slug = ?`).get(slug);
+    if (!topic) {
+      return res.status(404).json({ error: `Topic not found: ${slug}` });
+    }
+
+    // Cascade delete all related data
+    db.prepare(`DELETE FROM claims WHERE topic_id = ?`).run(topic.id);
+    db.prepare(`DELETE FROM arguments WHERE topic_id = ?`).run(topic.id);
+    db.prepare(`DELETE FROM polls WHERE topic_id = ?`).run(topic.id);
+    db.prepare(`DELETE FROM trend_signals WHERE topic_id = ?`).run(topic.id);
+    db.prepare(`DELETE FROM topics WHERE id = ?`).run(topic.id);
+
+    logger.info('Topic deleted via admin API', { slug, topicId: topic.id });
+    res.json({ message: `Deleted topic: ${slug}` });
+  } catch (err) {
+    logger.error('Admin delete topic failed', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/run-log — recent pipeline run history
 router.get('/run-log', requireAdmin, (req, res) => {
   try {

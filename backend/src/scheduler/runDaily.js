@@ -41,31 +41,31 @@ async function runDailyPipeline(overrideDate = null) {
   }
 
   try {
-    // ── Phase 1: Scraping (run all in parallel) ──────────────────────────────
-    logger.info('Phase 1: Scraping signals...');
-    const [redditResults, googleResults, youtubeResults] = await Promise.allSettled([
-      scrapeReddit(),
-      scrapeGoogleTrends(),
-      scrapeYoutube(),
-    ]);
+    let reddit = [], google = [], youtube = [];
 
-    const reddit  = redditResults.status  === 'fulfilled' ? redditResults.value  : [];
-    const google  = googleResults.status  === 'fulfilled' ? googleResults.value  : [];
-    const youtube = youtubeResults.status === 'fulfilled' ? youtubeResults.value : [];
-
-    logger.info('Scraping complete', {
-      reddit: reddit.length,
-      google: google.length,
-      youtube: youtube.length,
-    });
+    // ── Phase 1: Scraping — only for today's run, not backfill ───────────────
+    if (!overrideDate) {
+      logger.info('Phase 1: Scraping signals...');
+      const [redditResults, googleResults, youtubeResults] = await Promise.allSettled([
+        scrapeReddit(),
+        scrapeGoogleTrends(),
+        scrapeYoutube(),
+      ]);
+      reddit  = redditResults.status  === 'fulfilled' ? redditResults.value  : [];
+      google  = googleResults.status  === 'fulfilled' ? googleResults.value  : [];
+      youtube = youtubeResults.status === 'fulfilled' ? youtubeResults.value : [];
+      logger.info('Scraping complete', { reddit: reddit.length, google: google.length, youtube: youtube.length });
+    } else {
+      logger.info('Phase 1: Skipping scrapers for historical date — using GPT-4o knowledge');
+    }
 
     // ── Phase 2: Topic selection ─────────────────────────────────────────────
     logger.info('Phase 2: Selecting topic...');
     let selectedTopic;
 
-    if (reddit.length === 0 && google.length === 0 && youtube.length === 0) {
-      // Scrapers returned nothing — fall back to direct GPT-4o selection
-      logger.warn('All scrapers returned empty results — falling back to direct GPT-4o topic selection');
+    if (overrideDate || (reddit.length === 0 && google.length === 0 && youtube.length === 0)) {
+      // Historical date OR all scrapers empty — use direct GPT-4o selection
+      if (!overrideDate) logger.warn('All scrapers returned empty results — falling back to direct GPT-4o topic selection');
       selectedTopic = await selectTopicForDate(date);
     } else {
       selectedTopic = await selectTopic(reddit, google, youtube, date);
