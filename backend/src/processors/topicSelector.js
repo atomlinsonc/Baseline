@@ -197,4 +197,54 @@ async function selectTopic(redditCandidates, googleTrends, youtubeCandidates, da
   return { ...selected, candidates };
 }
 
-module.exports = { selectTopic };
+/**
+ * Directly select a topic for a specific date using GPT-4o only,
+ * without any scraper signal data. Used when scrapers fail or for
+ * backfilling historical dates.
+ */
+async function selectTopicForDate(date) {
+  if (topicExistsForDate(date)) {
+    logger.info('Topic already exists for date, skipping selection', { date });
+    return null;
+  }
+
+  const recentTitles = getRecentTopicTitles();
+
+  const prompt = `You are the editor of Baseline, a data-driven debate dashboard that surfaces America's most genuinely divisive policy and social debates.
+
+Date: ${date}
+
+No real-time trending data is available. Based on your knowledge of what was happening in American politics, law, and society around ${date}, select ONE topic that meets all criteria:
+
+SELECTION CRITERIA (all must be met):
+1. Genuine societal debate — policy, rights, economics, science, civil liberties. NOT sports, entertainment, celebrity drama.
+2. Strongly polarized — Americans are genuinely split on this, with clear "pro" and "con" camps.
+3. Sufficient empirical ground — there must be real polling data, verifiable claims, and fact-checkable arguments.
+4. Timely for ${date} — the debate was active and prominent around this specific date.
+5. NOT recently covered — do not repeat these recent topics: ${recentTitles.slice(0, 15).join(', ')}
+
+Think about what was dominating political discussion, congressional debates, court rulings, executive orders, or major social movements around ${date}. Choose the single most divisive, substantive, data-rich debate of that moment.
+
+Respond with a JSON object (no markdown, no explanation) in exactly this format:
+{
+  "selected_title": "Concise, precise topic title suitable for a headline",
+  "category": "one of: social-issues|economic-policy|foreign-policy|civil-rights|science-technology|religion|healthcare|immigration|education|environment",
+  "summary": "2–3 sentences explaining what the debate is about and why it matters. Neutral, factual tone.",
+  "trending_reason": "2–3 sentences describing what was driving this debate around ${date} — key events, court cases, legislation, or news stories that made it prominent.",
+  "divisiveness_explanation": "1–2 sentences explaining WHY this topic is genuinely divisive — what values or interests are in conflict.",
+  "selection_reasoning": "1–2 sentences explaining why you chose this topic for ${date} specifically."
+}`;
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.3,
+    response_format: { type: 'json_object' },
+  });
+
+  const data = JSON.parse(response.choices[0].message.content);
+  logger.info('Topic directly selected by AI', { date, title: data.selected_title, reasoning: data.selection_reasoning });
+  return { ...data, candidates: [] };
+}
+
+module.exports = { selectTopic, selectTopicForDate };

@@ -97,6 +97,66 @@ router.post('/seed-sample', requireAdmin, (req, res) => {
   }
 });
 
+// POST /api/admin/backfill — generate topics for a date range (uses GPT-4o for each day)
+router.post('/backfill', requireAdmin, async (req, res) => {
+  const { start_date, end_date } = req.body || {};
+
+  if (!start_date || !end_date) {
+    return res.status(400).json({ error: 'start_date and end_date required (YYYY-MM-DD)' });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start_date) || !/^\d{4}-\d{2}-\d{2}$/.test(end_date)) {
+    return res.status(400).json({ error: 'Dates must be in YYYY-MM-DD format' });
+  }
+
+  const start = new Date(start_date);
+  const end = new Date(end_date);
+  if (isNaN(start) || isNaN(end) || start > end) {
+    return res.status(400).json({ error: 'Invalid date range' });
+  }
+
+  // Count days to process
+  const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  logger.info('Backfill started via admin API', { start_date, end_date, days });
+
+  // Respond immediately so the request doesn't time out
+  res.json({ message: 'Backfill started', start_date, end_date, days });
+
+  // Run async in background
+  (async () => {
+    const { runDailyPipeline } = require('../scheduler/runDaily');
+    const { topicExistsForDate } = require('../db/queries');
+
+    let succeeded = 0;
+    let skipped = 0;
+    let failed = 0;
+    const current = new Date(start);
+
+    while (current <= end) {
+      const dateStr = current.toISOString().slice(0, 10);
+
+      if (topicExistsForDate(dateStr)) {
+        logger.info(`Backfill: skipping ${dateStr} (already exists)`);
+        skipped++;
+      } else {
+        try {
+          await runDailyPipeline(dateStr);
+          succeeded++;
+          logger.info(`Backfill: completed ${dateStr}`, { succeeded, failed, remaining: days - succeeded - skipped - failed });
+        } catch (err) {
+          failed++;
+          logger.error(`Backfill: failed ${dateStr}`, { error: err.message });
+        }
+        // Pause between days to avoid OpenAI rate limits
+        await new Promise(r => setTimeout(r, 3000));
+      }
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    logger.info('Backfill complete', { succeeded, skipped, failed, total: days });
+  })().catch(err => logger.error('Backfill fatal error', { error: err.message }));
+});
+
 // GET /api/admin/run-log — recent pipeline run history
 router.get('/run-log', requireAdmin, (req, res) => {
   try {

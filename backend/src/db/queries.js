@@ -10,9 +10,10 @@ const { getDb } = require('./schema');
 function getTodaysTopic() {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
-  return db.prepare(`
-    SELECT * FROM topics WHERE date = ? AND status = 'published' LIMIT 1
-  `).get(today);
+  // Try today's topic first, fall back to most recent published topic
+  const topic = db.prepare(`SELECT * FROM topics WHERE date = ? AND status = 'published' LIMIT 1`).get(today);
+  if (topic) return topic;
+  return db.prepare(`SELECT * FROM topics WHERE status = 'published' ORDER BY date DESC LIMIT 1`).get() || null;
 }
 
 function getTopicBySlug(slug) {

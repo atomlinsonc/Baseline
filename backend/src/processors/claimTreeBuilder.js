@@ -187,7 +187,7 @@ Return JSON:
   "verdict": "one of the six options above",
   "explanation": "2–3 sentences explaining the verdict. Cite specific evidence, studies, or sources where possible. If unverifiable, explain why it's values-based rather than empirical.",
   "sources": [
-    {"name": "source name", "url": "url if available", "verdict_from_source": "what this source found"}
+    {"name": "source name", "url": "specific article or report URL only — never a homepage (e.g. use https://www.bls.gov/emp/tables/education-summary.htm not https://www.bls.gov). Omit the url field entirely if you only have a homepage URL.", "verdict_from_source": "what this source found"}
   ]
 }`;
 

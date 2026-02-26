@@ -17,14 +17,14 @@ require('openai/shims/node'); // Ensure Node.js-native fetch/File shims for open
 const { scrapeReddit } = require('../scrapers/redditScraper');
 const { scrapeGoogleTrends } = require('../scrapers/googleTrendsScraper');
 const { scrapeYoutube } = require('../scrapers/youtubeScraper');
-const { selectTopic } = require('../processors/topicSelector');
+const { selectTopic, selectTopicForDate } = require('../processors/topicSelector');
 const { buildTopic } = require('../processors/topicBuilder');
 const { logRun, topicExistsForDate } = require('../db/queries');
 const { initDb } = require('../db/schema');
 const logger = require('../utils/logger');
 
-async function runDailyPipeline() {
-  const date = new Date().toISOString().slice(0, 10);
+async function runDailyPipeline(overrideDate = null) {
+  const date = overrideDate || new Date().toISOString().slice(0, 10);
   const startTime = Date.now();
   let topicId = null;
 
@@ -33,9 +33,9 @@ async function runDailyPipeline() {
   // Ensure DB is initialized
   initDb();
 
-  // Guard: skip if already ran today
+  // Guard: skip if already ran for this date
   if (topicExistsForDate(date)) {
-    logger.info('Topic already published for today — skipping run', { date });
+    logger.info('Topic already published for date — skipping run', { date });
     logRun({ run_date: date, status: 'skipped', topic_id: null, error_msg: 'Topic already exists', duration_ms: 0 });
     return { status: 'skipped', date };
   }
@@ -59,13 +59,17 @@ async function runDailyPipeline() {
       youtube: youtube.length,
     });
 
-    if (reddit.length === 0 && google.length === 0 && youtube.length === 0) {
-      throw new Error('All scrapers returned empty results');
-    }
-
     // ── Phase 2: Topic selection ─────────────────────────────────────────────
     logger.info('Phase 2: Selecting topic...');
-    const selectedTopic = await selectTopic(reddit, google, youtube, date);
+    let selectedTopic;
+
+    if (reddit.length === 0 && google.length === 0 && youtube.length === 0) {
+      // Scrapers returned nothing — fall back to direct GPT-4o selection
+      logger.warn('All scrapers returned empty results — falling back to direct GPT-4o topic selection');
+      selectedTopic = await selectTopicForDate(date);
+    } else {
+      selectedTopic = await selectTopic(reddit, google, youtube, date);
+    }
 
     if (!selectedTopic) {
       logRun({ run_date: date, status: 'skipped', topic_id: null, error_msg: 'Topic already exists', duration_ms: Date.now() - startTime });
