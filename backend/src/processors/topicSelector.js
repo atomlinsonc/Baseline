@@ -4,10 +4,10 @@
  * select the single best topic for today.
  *
  * Selection criteria (in priority order):
- *  1. Genuine societal/policy debate (not entertainment/sports)
- *  2. Strong divisiveness signal (bimodal public sentiment)
- *  3. Trending across multiple platforms (cross-platform validation)
- *  4. Sufficient available polling/factual data to build a full topic page
+ *  1. Broad mainstream public interest — widely discussed, not niche
+ *  2. Genuinely contested — Americans disagree, ideally ~40–60% split
+ *  3. Has real polling data from major pollsters (Gallup, Pew, AP-NORC, etc.)
+ *  4. Trending / timely — active debate RIGHT NOW
  *  5. Not already published (checked against DB)
  */
 
@@ -78,16 +78,18 @@ function mergeSignals(redditCandidates, googleTrends, youtubeCandidates) {
     }
   }
 
-  // Compute composite divisiveness score
+  // Compute composite score — popularity/engagement first, divisiveness as filter
   const scored = Array.from(candidates.values()).map(c => {
     const multiPlatform = Math.min(c.sources.length / 3, 1);
-    const divisiveness = (
-      c.reddit_divisiveness * 0.45 +
-      c.youtube_divisiveness * 0.25 +
-      c.google_score * 0.15 +
-      multiPlatform * 0.15
+    // Normalize comment volume as a popularity signal (5k comments = fully engaged)
+    const engagementScore = Math.min(c.reddit_comments / 5000, 1);
+    const composite = (
+      engagementScore * 0.35 +          // raw engagement = how many people care
+      c.google_score * 0.25 +           // google trending = mainstream interest
+      multiPlatform * 0.20 +            // cross-platform presence = not niche
+      c.reddit_divisiveness * 0.20      // some polarization required, not dominant
     );
-    return { ...c, composite_score: divisiveness };
+    return { ...c, composite_score: composite };
   });
 
   return scored.sort((a, b) => b.composite_score - a.composite_score).slice(0, 20);
@@ -135,34 +137,37 @@ function getRecentTopicTitles() {
 async function selectTopicWithAI(candidates, date) {
   const recentTitles = getRecentTopicTitles();
 
-  const prompt = `You are the editor of Baseline, a data-driven debate dashboard that surfaces America's most genuinely divisive policy and social debates.
+  const prompt = `You are the editor of Baseline, a data-driven debate dashboard that covers America's most widely-discussed contested policy debates.
 
 Today's date: ${date}
 
-Below are trending topic candidates ranked by a composite signal score (Reddit divisiveness + YouTube engagement + Google Trends). Your job is to select ONE topic that best meets all criteria:
+Below are trending topic candidates ranked by a composite signal score (engagement volume + Google Trends + cross-platform presence + some divisiveness). Your job is to select ONE topic that best meets all criteria:
 
-SELECTION CRITERIA (all must be met):
-1. Genuine societal debate — policy, rights, economics, science, civil liberties. NOT sports, entertainment, celebrity drama.
-2. Strongly polarized — Americans are genuinely split on this, ideally with clear "pro" and "con" camps.
-3. Sufficient empirical ground — there must be real polling data, verifiable claims, and fact-checkable arguments.
-4. Timely — the debate is active RIGHT NOW, not something resolved years ago.
-5. NOT recently covered — do not repeat these recent topics: ${recentTitles.slice(0, 10).join(', ')}
+SELECTION CRITERIA (ranked by importance):
+1. POPULAR & MAINSTREAM — millions of Americans are actively talking about this. It should be a topic that appears on network news, is dinner-table conversation, and that a typical American has a clear opinion on. NOT niche, academic, or specialized.
+2. GENUINELY CONTESTED — Americans are split on this (not 90/10, closer to 40/60 or 50/50). Clear pro and con camps exist. Mainstream people disagree, not just political extremes.
+3. HAS REAL POLLING DATA — this MUST be a topic where major pollsters (Gallup, Pew Research, AP-NORC, CNN, NYT/Siena, ABC/WaPo, Quinnipiac) have asked Americans their opinion. If you cannot name at least one real poll on this topic, do NOT select it.
+4. TIMELY — the debate is active right now, not dormant.
+5. NOT RECENTLY COVERED — do not repeat: ${recentTitles.slice(0, 10).join(', ')}
+
+IMPORTANT: Prefer big, familiar topics (immigration enforcement, abortion access, gun control, healthcare costs, minimum wage, Social Security, climate policy, drug pricing, criminal justice) over niche regulatory debates. A topic being "extremely divisive" is less important than it being widely known and having solid polling.
 
 CANDIDATES:
 ${candidates.slice(0, 15).map((c, i) =>
   `${i + 1}. "${c.title}"
    Score: ${c.composite_score.toFixed(2)} | Sources: ${c.sources.join(', ')}
-   Reddit divisiveness: ${c.reddit_divisiveness.toFixed(2)} | Comments: ${c.reddit_comments}`
+   Engagement (comments): ${c.reddit_comments} | Google trending: ${c.google_score.toFixed(2)}`
 ).join('\n\n')}
 
 Respond with a JSON object (no markdown, no explanation) in exactly this format:
 {
-  "selected_title": "Concise, precise topic title suitable for a headline",
+  "selected_title": "Concise, precise topic title suitable for a headline (e.g. 'Debate Over Stricter Immigration Enforcement')",
   "category": "one of: social-issues|economic-policy|foreign-policy|civil-rights|science-technology|religion|healthcare|immigration|education|environment",
   "summary": "2–3 sentences explaining what the debate is about and why it matters right now. Neutral, factual tone.",
-  "trending_reason": "2–3 sentences explaining where this debate is currently happening — which platforms, what events triggered it, what's driving the conversation. Cite the platforms from the signal data.",
-  "divisiveness_explanation": "1–2 sentences explaining WHY this topic is genuinely divisive — what values or interests are in conflict.",
-  "selection_reasoning": "1–2 sentences explaining why you chose this topic over others."
+  "trending_reason": "2–3 sentences explaining where this debate is currently happening — which platforms, what events triggered it, what's driving the conversation.",
+  "divisiveness_explanation": "1–2 sentences explaining WHY this topic is genuinely contested — what values or interests are in conflict.",
+  "selection_reasoning": "1–2 sentences explaining why you chose this topic. Confirm it has real polling data.",
+  "polling_hint": "The specific polling question or search terms most likely to find real survey data for this topic (e.g. 'immigration deportation Gallup' or 'minimum wage increase support poll'). Be specific."
 }`;
 
   const response = await openai.chat.completions.create({
@@ -210,20 +215,20 @@ async function selectTopicForDate(date) {
 
   const recentTitles = getRecentTopicTitles();
 
-  const prompt = `You are the editor of Baseline, a data-driven debate dashboard that surfaces America's most genuinely divisive policy and social debates.
+  const prompt = `You are the editor of Baseline, a data-driven debate dashboard that covers America's most widely-discussed contested policy debates.
 
 Date: ${date}
 
 No real-time trending data is available. Based on your knowledge of what was happening in American politics, law, and society around ${date}, select ONE topic that meets all criteria:
 
-SELECTION CRITERIA (all must be met):
-1. Genuine societal debate — policy, rights, economics, science, civil liberties. NOT sports, entertainment, celebrity drama.
-2. Strongly polarized — Americans are genuinely split on this, with clear "pro" and "con" camps.
-3. Sufficient empirical ground — there must be real polling data, verifiable claims, and fact-checkable arguments.
-4. Timely for ${date} — the debate was active and prominent around this specific date.
-5. NOT recently covered — do not repeat these recent topics: ${recentTitles.slice(0, 15).join(', ')}
+SELECTION CRITERIA (ranked by importance):
+1. POPULAR & MAINSTREAM — this should be a topic that millions of ordinary Americans were actively discussing around ${date}. It should appear on network TV news, be a dinner-table topic, and something a typical American has a strong opinion on. NOT a niche regulatory or academic debate.
+2. GENUINELY CONTESTED — Americans were split on this (closer to 40/60 or 50/50, not 90/10). Clear mainstream pro and con camps exist.
+3. HAS REAL POLLING DATA — you MUST be able to name at least one real poll from Gallup, Pew Research, AP-NORC, CNN, NYT/Siena, ABC/WaPo, Quinnipiac, or similar that asked Americans about this topic. If no such poll exists, do NOT choose this topic.
+4. TIMELY for ${date} — the debate was active and prominent around this specific date.
+5. NOT recently covered — do not repeat: ${recentTitles.slice(0, 15).join(', ')}
 
-Think about what was dominating political discussion, congressional debates, court rulings, executive orders, or major social movements around ${date}. Choose the single most divisive, substantive, data-rich debate of that moment.
+Think about what was dominating political discussion, congressional debates, court rulings, or major news around ${date}. Strongly prefer big, familiar American debates: immigration, abortion, gun control, healthcare, minimum wage, Social Security, climate, criminal justice, taxes, education. Avoid niche, technical, or regulatory topics that most Americans couldn't name.
 
 Respond with a JSON object (no markdown, no explanation) in exactly this format:
 {
@@ -231,8 +236,9 @@ Respond with a JSON object (no markdown, no explanation) in exactly this format:
   "category": "one of: social-issues|economic-policy|foreign-policy|civil-rights|science-technology|religion|healthcare|immigration|education|environment",
   "summary": "2–3 sentences explaining what the debate is about and why it matters. Neutral, factual tone.",
   "trending_reason": "2–3 sentences describing what was driving this debate around ${date} — key events, court cases, legislation, or news stories that made it prominent.",
-  "divisiveness_explanation": "1–2 sentences explaining WHY this topic is genuinely divisive — what values or interests are in conflict.",
-  "selection_reasoning": "1–2 sentences explaining why you chose this topic for ${date} specifically."
+  "divisiveness_explanation": "1–2 sentences explaining WHY this topic is genuinely contested — what values or interests are in conflict.",
+  "selection_reasoning": "1–2 sentences explaining why you chose this topic. Confirm it has real polling data.",
+  "polling_hint": "The specific polling question or search terms most likely to find real survey data for this topic (e.g. 'immigration deportation Gallup' or 'abortion ban support Pew'). Be specific."
 }`;
 
   const response = await openai.chat.completions.create({

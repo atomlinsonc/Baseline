@@ -64,7 +64,11 @@ async function buildTopic(selectedTopic, signalData, date) {
   // ── 3. Scrape and process polling data ───────────────────────────────────────
   logger.info('Fetching polling data...');
   const rawPolls = await scrapePollingData(selectedTopic.selected_title);
-  const processedPolls = await processPollingData(selectedTopic.selected_title, rawPolls);
+  const processedPolls = await processPollingData(
+    selectedTopic.selected_title,
+    rawPolls,
+    selectedTopic.polling_hint || ''
+  );
 
   for (const poll of processedPolls) {
     insertPoll({
